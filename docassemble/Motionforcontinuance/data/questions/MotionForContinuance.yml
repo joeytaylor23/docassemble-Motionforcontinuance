@@ -1,0 +1,415 @@
+---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+---
+metadata:
+  title: |
+    Motionforcontinuance
+  short title: |
+    Motionforcontinuance
+  tags:
+    - FA-00-00-00-00
+  authors:
+    - Joey
+---
+mandatory: True
+comment: |
+  Global interview metadata
+variable name: interview_metadata["MotionForContinuance"]
+data:
+  al_weaver_version: "1.8.0"
+  generated on: "2023-02-06"
+  title: >-
+    Motionforcontinuance
+  short title: >-
+    Motionforcontinuance
+  description: |-
+    Motionforcontinuance
+  allowed courts: 
+    - "District Court"
+  categories:
+    - "FA-00-00-00-00"
+  typical role: "plaintiff"
+  generate download screen: True
+---
+code: |
+  interview_metadata['main_interview_key'] =  'MotionForContinuance'
+---
+code: |
+  # This controls the default country and list of states in address field questions
+  AL_DEFAULT_COUNTRY = "US"
+---
+code: |
+  # This controls the default state in address field questions
+  AL_DEFAULT_STATE = "LA"
+---
+code: |
+  github_repo_name =  'docassemble-Motionforcontinuance'
+---
+code: |
+  interview_short_title = "Ask the court for a Motionforcontinuance"
+---
+code: |
+  al_form_type = "starts_case" 
+---
+objects:
+  - users: ALPeopleList.using(ask_number=True,target_number=1)
+  - other_parties: ALPeopleList.using(ask_number=True,target_number=1)
+  - attorney: ALPeopleList.using(ask_number=True,target_number=1)
+  - court_list: ALCourtLoader.using(file_name='JDCs_by_parish.xlsx')
+---
+sections:
+  - review_MotionForContinuance: Review your answers
+---
+#################### Interview order #####################
+comment: |
+  Controls order and branching logic for questions specific to this form
+id: interview_order_MotionForContinuance
+code: |
+  # Set the allowed courts for this interview
+  allowed_courts = interview_metadata["MotionForContinuance"]["allowed courts"]
+  nav.set_section("review_MotionForContinuance")
+  user_role = "plaintiff"
+  user_ask_role = "plaintiff"
+  petitioners.gather()
+  users[0].address.address
+  type_of_hearing
+  trial_court
+  trial_court_index
+  reason_for_continuance
+  defendants.gather()
+  defendants[0].address.address
+  plantiff_or_defendant_attorney
+  if (plantiff_or_defendant_attorney is True):
+    attorney.gather()
+    attorney[0].address.address
+    other_party_contacted_about_continuance
+  else:
+    other_party_contacted_about_continuance
+  set_progress(33)
+  interview_order_MotionForContinuance = True
+---
+###################### Main order ######################
+comment: |
+  This block includes the logic for standalone interviews.
+  Delete mandatory: True to include in another interview
+mandatory: True
+code: |
+  al_intro_screen
+  MotionForContinuance_intro
+  interview_order_MotionForContinuance
+  signature_date
+  # Store anonymous data for analytics / statistics
+  store_variables_snapshot(
+      persistent=True,
+      data={
+          "zip": showifdef("users[0].address.zip"),
+          "reached_interview_end": True,
+      },
+  )
+  MotionForContinuance_download
+---
+comment: |
+  This question is used to introduce your interview. Please customize
+id: Motionforcontinuance
+continue button field: MotionForContinuance_intro
+question: |
+  These instructions are meant to guide you through the process of requesting a continuance.
+subquestion: |
+  Courts take scheduled dates seriously. A continuance should be asked for only as a last option. Filing a Motion for Continuance does not automatically mean you will get a continuance. If the court does not give you a continuance, the case will move forward according to the already scheduled date.
+
+  This interview is not legal advice and cannot take the place of the advice that a lawyer can give you. It is always best to speak with a lawyer before taking any legal action. When you represent yourself in court, you must follow all the proper procedures and the law. It is your responsibility to see your case through the whole process.
+
+  1.	Be sure you have the correct form.
+  2.	Read all instructions before you begin.
+  3.	Answer with 100% accurate information. Any false statement made in court or written in a court document may constitute perjury.
+  4.	Check all options that pertain to your situation.
+  5.	Attach any supporting documentation (i.e., a doctor’s note) related to your request.
+---
+id: Information to Have
+question: |
+  Information you will need:
+subquestion: |
+  1.	The docket number of the case for which you are requesting a continuance.
+  2.	The date and location of your currently scheduled hearing.
+  3.	Evidence (if possible) in support of your request for a continuance.
+  4.	The exact name and address of the opposing party or the opposing party’s counsel.
+
+---
+id: your name
+sets:
+    - users[0].name.first
+    - users[0].name.last
+    - users[0].name.middle
+    - users[0].name.suffix
+question: |
+  What is your name?
+fields:
+  - code: |
+      users[0].name_fields()
+  - "Phone number": user_phone_number
+  - "Are you the plantiff or the defendant?": petitioner_or_defendant
+    input type: radio
+    choices:
+      - Plantiff: user_is_the_plantiff
+      - Defendant: user_is_the_defendant
+---
+id: Other Party Information
+question: |
+  % if petitioner_or_defendant == "user_is_the_plantiff":
+  What is the name of the defendant?
+  % else:
+  What is the name of the plantiff?
+  % endif
+sets:
+  - other_parties[0].name.first
+  - other_parties[0].name.last
+  - other_parties[0].name.middle
+  - other_parties[0].name.suffix
+fields:
+  - code: |
+     other_parties[0].name_fields(person_or_business='person')
+  - "Phone number": phone_number
+    datatype: text
+---
+id: Does the plantiff/defendant have an attorney?
+question: |
+  Attorney Information
+fields:
+  - "Does ${ other_parties[0].name.first }'s have an attorney?": plantiff_or_defendant_attorney
+    datatype: yesnoradio
+---
+id: Attorney Name
+sets:
+  - attorney[i].name.first
+  - attorney[i].name.middle
+  - attorney[i].name.last
+  - attorney[i].suffix
+question: |
+  Attorney Information
+fields:
+  - First name: attorney[0].name.first
+  - Middle name: attorney[0].name.middle
+    required: False
+  - Last name: attorney[0].name.last
+  - Suffix: attorney[0].name.suffix
+    required: False
+  - "What is the attorney's phone number?": attorney_phone_number
+    datatype: text
+---
+id: Hearing information
+question: |
+  Hearing Information
+fields:
+  - "What type of hearing are you petitioning a continuance for?": type_of_hearing
+    datatype: checkboxes
+    choices:
+      - Rule of Custody
+      - Child Support
+      - Visitation
+      - Other
+  - "When were you served with the rule to show cause?": date_rule_to_show_cause_served
+    datatype: datetime
+  - "Who is the judge of the hearing?": judge_name
+    datatype: text
+  - "What is the docket number?": docket_number
+    datatype: integer
+  - "What is the division number?": division
+    datatype: interger
+  - "In what parish would you like to file your petition?": trial_court_index
+    code: |
+      court_list.filter_courts(None)
+---
+code: |
+  trial_court = court_list.as_court('trial_court', trial_court_index[0])
+---
+id: Reason for Continuance
+question: |
+  Reason for Continuance
+fields:
+  - "Which of these is the reason for seeking continuance? (Check all that applies)": reason_for_continuance
+    datatype: checkboxes
+    choices:
+      - Need additional time to prepare and/or seek counsel
+      - Has a prior doctor appointment/engagement that cannot be rescheduled
+      - Other
+  - "Briefly describe the other reason you are requesting this continuance.": other_reason_for_continuance_description
+    datatype: text
+---
+id: Who was contacted?
+question: |
+  Who was contacted about your motion for continuance?
+fields:
+  - "Have you contatcted the other party or their attorney about your intent to request the continuance?": other_party_contacted_about_continuance
+    datatype: yesnoradio
+  - "Who was contacted about your motion for continuance?": who_was_contacted
+    datatype: radio
+    choices:
+      - ${ other_parties[0].name.first }
+      - Their attorney: their_attorney
+    show if:
+      variable: other_party_contacted_about_continuance
+      is: True
+  - "Did they have an objection to the continuance?": possible_objection
+    datatype: yesnoradio
+    show if:
+      variable: other_party_contacted_about_continuance
+      is: True
+---
+id: preview MotionForContinuance
+question: |
+  Preview your form before you sign it
+subquestion: |
+  Here is a preview of the form you will sign on the next page.   
+  
+  ${ al_court_bundle.as_pdf(key='preview') }
+
+  Click the image to open it in a new tab. Click the "Edit answers" button
+  to edit your answers.
+
+  ${ action_button_html(url_action('review_MotionForContinuance'), label='Edit answers', color='info') }
+  
+  Remember to come back to this window to continue and sign your form.
+continue button field: MotionForContinuance_preview_question    
+---
+code: |
+  signature_fields = []
+---
+code: |
+  # This is a placeholder for the addresses that will be searched
+  # for matching address to court. Edit if court venue is based on 
+  # a different address than the user's
+  [user.address.address for user in users.complete_elements()]
+  addresses_to_search = [user.address for user in users.complete_elements()]
+---
+id: MotionForContinuance review screen
+event: review_MotionForContinuance
+question: |
+  Review your answers
+review:
+  - Edit: petitioners.revisit
+    button: |
+      **Petitioners**
+
+      % for item in petitioners:
+        * ${ item }
+      % endfor
+  - Edit: division
+    button: |
+      **Division**:
+      ${ division }
+  - Edit: judicial_district
+    button: |
+      **Judicial district**:
+      ${ judicial_district }
+  - Edit: docket_number
+    button: |
+      **Docket number**:
+      ${ docket_number }
+  - Edit: judge_last_name
+    button: |
+      **Judge last name**:
+      ${ judge_last_name }
+  - Edit: defendants.revisit
+    button: |
+      **Defendants**
+
+      % for item in defendants:
+        * ${ item }
+      % endfor
+  - Edit: scheduled_hearing_date
+    button: |
+      **Date of Scheduled hearing**:
+      ${ scheduled_hearing_date }
+  - Edit: scheduled_hearing_time
+    button: |
+      **Scheduled hearing time**:
+      ${ scheduled_hearing_time }
+---
+continue button field: petitioners.revisit
+question: |
+  Edit petitioners
+subquestion: |
+  ${ petitioners.table }
+
+  ${ petitioners.add_action() }
+---
+table: petitioners.table
+rows: petitioners
+columns:
+  - Name: |
+      row_item.name.full() if defined("row_item.name.first") else ""
+edit:
+  - name.first
+confirm: True
+
+---
+continue button field: defendants.revisit
+question: |
+  Edit defendants
+subquestion: |
+  ${ defendants.table }
+
+  ${ defendants.add_action() }
+---
+table: defendants.table
+rows: defendants
+columns:
+  - Name: |
+      row_item.name.full() if defined("row_item.name.first") else ""
+edit:
+  - name.first
+confirm: True
+
+---
+id: download MotionForContinuance
+event: MotionForContinuance_download
+question: |
+  All done
+subquestion: |
+  Thank you ${users}. Your form is ready to download and deliver.
+  
+  View, download and send your form below. Click the "Edit answers" button to fix any mistakes.
+
+  ${ action_button_html(url_action('review_MotionForContinuance'), label='Edit answers', color='info') }
+  
+  
+  ${ al_user_bundle.download_list_html() }
+  
+
+  ${ al_user_bundle.send_button_html(show_editable_checkbox=True) }
+
+progress: 100
+---
+# ALDocument objects specify the metadata for each template
+objects:
+  - MotionForContinuance_Post_interview_instructions: ALDocument.using(title="Instructions", filename="MotionForContinuance_next_steps.docx", enabled=True, has_addendum=False)
+  - MotionForContinuance_attachment: ALDocument.using(title="Motionforcontinuance", filename="MotionForContinuance", enabled=True, has_addendum=False, )
+---
+# Bundles group the ALDocuments into separate downloads, such as for court and for the user
+objects:
+  - al_user_bundle: ALDocumentBundle.using(elements=[MotionForContinuance_Post_interview_instructions, MotionForContinuance_attachment], filename="MotionForContinuance", title="All forms to download for your records", enabled=True)
+  - al_court_bundle: ALDocumentBundle.using(elements=[MotionForContinuance_attachment],  filename="MotionForContinuance", title="All forms to deliver to court", enabled=True)
+---
+# Each attachment defines a key in an ALDocument. We use `i` as the placeholder here so the same template is 
+# used for "preview" and "final" keys, and logic in the template checks the value of 
+# `i` to show or hide the user's signature
+attachment:
+  name: Post-interview-Instructions
+  filename: MotionForContinuance_next_steps
+  docx template file: MotionForContinuance_next_steps.docx
+  variable name: MotionForContinuance_Post_interview_instructions[i]
+  skip undefined: True
+---
+attachment:
+  name: MotionForContinuance
+  filename: MotionForContinuance
+  variable name: MotionForContinuance_attachment[i]
+  skip undefined: True
+  docx template file: MotionForContinuance.docx
+  fields:
+      - "name": ${ trial_court.name }
+      - "judicial_district": ${ trial_court.judicial_district }
+      - "district_attorney": ${ trial_court.district_attorney }
+
+
