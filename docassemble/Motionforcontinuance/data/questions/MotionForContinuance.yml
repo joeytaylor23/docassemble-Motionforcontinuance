@@ -69,8 +69,7 @@ code: |
   # Set the allowed courts for this interview
   allowed_courts = interview_metadata["MotionForContinuance"]["allowed courts"]
   nav.set_section("review_MotionForContinuance")
-  user_role = "plaintiff"
-  user_ask_role = "plaintiff"
+  user_ask_role 
   petitioners.gather()
   users[0].address.address
   type_of_hearing
@@ -85,7 +84,7 @@ code: |
     attorney[0].address.address
     other_party_contacted_about_continuance
   else:
-    other_party_contacted_about_continuance
+    defendant_contacted_about_continuance
   set_progress(33)
   interview_order_MotionForContinuance = True
 ---
@@ -126,6 +125,18 @@ subquestion: |
   4.	Check all options that pertain to your situation.
   5.	Attach any supporting documentation (i.e., a doctor’s note) related to your request.
 ---
+id: plantiff or defendant
+question: |
+  Were you the plantiff or defendant?
+subquestion: |
+  ${ collapse_template(help_user_ask_role_template) }
+fields: 
+  - no label: user_ask_role
+    datatype: radio
+    choices:
+      - Plantiff: plaintiff
+      - Defendant: defendant
+---
 id: Information to Have
 question: |
   Information you will need:
@@ -148,15 +159,10 @@ fields:
   - code: |
       users[0].name_fields()
   - "Phone number": user_phone_number
-  - "Are you the plantiff or the defendant?": petitioner_or_defendant
-    input type: radio
-    choices:
-      - Plantiff: user_is_the_plantiff
-      - Defendant: user_is_the_defendant
 ---
 id: Other Party Information
 question: |
-  % if petitioner_or_defendant == "user_is_the_plantiff":
+  % if user_ask_role == "plantiff":
   What is the name of the defendant?
   % else:
   What is the name of the plantiff?
@@ -203,6 +209,7 @@ question: |
 fields:
   - "What type of hearing are you petitioning a continuance for?": type_of_hearing
     datatype: checkboxes
+    none of the above: False
     choices:
       - Rule of Custody
       - Child Support
@@ -213,9 +220,9 @@ fields:
   - "Who is the judge of the hearing?": judge_name
     datatype: text
   - "What is the docket number?": docket_number
-    datatype: integer
+    datatype: text
   - "What is the division number?": division
-    datatype: interger
+    datatype: text
   - "In what parish would you like to file your petition?": trial_court_index
     code: |
       court_list.filter_courts(None)
@@ -229,12 +236,16 @@ question: |
 fields:
   - "Which of these is the reason for seeking continuance? (Check all that applies)": reason_for_continuance
     datatype: checkboxes
+    none of the above: False
     choices:
-      - Need additional time to prepare and/or seek counsel
-      - Has a prior doctor appointment/engagement that cannot be rescheduled
-      - Other
+      - Need additional time to prepare and/or seek counsel: preparing_seeking_counsel
+      - Has a prior doctor appointment/engagement that cannot be rescheduled: appointment_or_engagement
+      - Other: other_reason_for_continuance
   - "Briefly describe the other reason you are requesting this continuance.": other_reason_for_continuance_description
-    datatype: text
+    datatype: area
+    show if:
+      variable: reason_for_continuance['other_reason_for_continuance']
+      is: True
 ---
 id: Who was contacted?
 question: |
@@ -254,6 +265,18 @@ fields:
     datatype: yesnoradio
     show if:
       variable: other_party_contacted_about_continuance
+      is: True
+---
+id: Did they contact the defendant?
+question: |
+  Who was contacted about your motion for continuance?
+fields:
+  - "Have you contatcted the ${ other_parties[0].name.first } about your intent to request the continuance?": defendant_contacted_about_continuance
+    datatype: yesnoradio
+  - "Did they have an objection to the continuance?": possible_objection
+    datatype: yesnoradio
+    show if:
+      variable: defendant_contacted_about_continuance
       is: True
 ---
 id: preview MotionForContinuance
