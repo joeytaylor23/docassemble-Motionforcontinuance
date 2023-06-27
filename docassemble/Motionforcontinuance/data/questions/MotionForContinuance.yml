@@ -85,6 +85,8 @@ code: |
     other_party_contacted_about_continuance
   else:
     defendant_contacted_about_continuance
+  review_MotionForContinuance
+  users[0].signature
   set_progress(33)
   interview_order_MotionForContinuance = True
 ---
@@ -159,6 +161,8 @@ fields:
   - code: |
       users[0].name_fields()
   - "Phone number": user_phone_number
+  - "Email": user_email
+    datatype: email
 ---
 id: Other Party Information
 question: |
@@ -211,12 +215,14 @@ fields:
     datatype: checkboxes
     none of the above: False
     choices:
-      - Rule of Custody
-      - Child Support
-      - Visitation
-      - Other
+      - Rule of Custody: rule_of_custody
+      - Child Support: child_support
+      - Visitation: visitation
+      - Other: other_type
   - "When were you served with the rule to show cause?": date_rule_to_show_cause_served
-    datatype: datetime
+    datatype: date
+  - "What was the time of the serving?": time_of_serving
+    datatype: time
   - "Who is the judge of the hearing?": judge_name
     datatype: text
   - "What is the docket number?": docket_number
@@ -239,7 +245,7 @@ fields:
     none of the above: False
     choices:
       - Need additional time to prepare and/or seek counsel: preparing_seeking_counsel
-      - Has a prior doctor appointment/engagement that cannot be rescheduled: appointment_or_engagement
+      - Has a prior doctor appointment/engagement that cannot be rescheduled: appointment_or_engagement 
       - Other: other_reason_for_continuance
   - "Briefly describe the other reason you are requesting this continuance.": other_reason_for_continuance_description
     datatype: area
@@ -306,66 +312,108 @@ code: |
   addresses_to_search = [user.address for user in users.complete_elements()]
 ---
 id: MotionForContinuance review screen
-event: review_MotionForContinuance
+continue button field: review_MotionForContinuance
 question: |
   Review your answers
 review:
-  - Edit: petitioners.revisit
+  - Edit: users[0].name.first
     button: |
-      **Petitioners**
-
-      % for item in petitioners:
-        * ${ item }
-      % endfor
-  - Edit: division
+      **Your name**:
+      ${ users[0].name.full() }
+  - Edit: users[0].address.address
     button: |
-      **Division**:
-      ${ division }
-  - Edit: judicial_district
+      **Your address:**
+      ${ users[0].address.address }, ${ users[0].address.city }, ${ users[0].address.state }, ${ users[0].address.zip }
+  - Edit: user_phone_number
     button: |
-      **Judicial district**:
-      ${ judicial_district }
-  - Edit: docket_number
-    button: |
-      **Docket number**:
-      ${ docket_number }
-  - Edit: judge_last_name
-    button: |
-      **Judge last name**:
-      ${ judge_last_name }
+      **Your phone number**:
+      ${ user_phone_number }
   - Edit: defendants.revisit
     button: |
-      **Defendants**
-
-      % for item in defendants:
-        * ${ item }
-      % endfor
-  - Edit: scheduled_hearing_date
+      % if user_ask_role == "defendant":
+       **Plaintiff:**
+      % elif user_ask_role == "plaintiff":
+       **Defendant:**
+      % endif 
+      ${ other_parties[0].name.full() }
+  - Edit: other_parties[0].address.address
     button: |
-      **Date of Scheduled hearing**:
-      ${ scheduled_hearing_date }
-  - Edit: scheduled_hearing_time
+      % if user_ask_role == "defendant":
+       **Plaintiff's address:**
+      % elif user_ask_role == "plaintiff":
+       **Defendant's address:**
+      % endif
+      ${ other_parties[0].address.address }, ${ other_parties[0].address.city }, ${ other_parties[0].address.state }, ${ other_parties[0].address.zip }
+  - Edit: phone_number
     button: |
-      **Scheduled hearing time**:
-      ${ scheduled_hearing_time }
----
-continue button field: petitioners.revisit
-question: |
-  Edit petitioners
-subquestion: |
-  ${ petitioners.table }
-
-  ${ petitioners.add_action() }
----
-table: petitioners.table
-rows: petitioners
-columns:
-  - Name: |
-      row_item.name.full() if defined("row_item.name.first") else ""
-edit:
-  - name.first
-confirm: True
-
+      % if user_ask_role == "defendant":
+       **Plaintiff's phone:**
+      % elif user_ask_role == "plaintiff":
+       **Defendant's phone:**
+      % endif
+      ${ phone_number }
+  - Edit: attorney[0].name.first
+    button: |
+      % if user_ask_role == "defendant":
+       **Plaintiff's attorney:**
+      % elif user_ask_role == "plaintiff":
+       **Defendant's attorney:**
+      % endif
+      ${ attorney[0].name.full() }
+  - Edit: attorney[0].address.address
+    button: |
+      **${ attorney[0].name.first }'s address:**
+      ${ attorney[0].address.address }, ${ attorney[0].address.city }, ${ attorney[0].address.state }, ${ attorney[0].address.zip }
+  - Edit: attorney_phone_number
+    button: |
+      **${ attorney[0].name.first }'s number:**
+      ${ attorney_phone_number }
+  - Edit: type_of_hearing
+    button: |
+      **Type of hearing:**
+      % if type_of_hearing['rule_of_custody']:
+      
+        Rule of Custody
+      % endif
+      % if type_of_hearing['child_support']:
+      
+        Child Support
+      % endif
+      % if type_of_hearing['visitation']:
+      
+        Visitation
+      % endif
+      % if type_of_hearing['other_type']:
+      
+        Other
+      % endif
+  - Edit: division
+    button: |
+      **Division #:**
+      ${ division }
+  - Edit: docket_number
+    button: |
+      **Docket #:**
+      ${ docket_number }
+  - Edit: trial_court_index
+    button: |
+      **Parish where order was filed:**
+      ${ trial_court.name }
+  - Edit: reason_for_continuance
+    button: |
+      **Reason for continuance:**
+      % if reason_for_continuance['preparing_seeking_counsel']:
+        Need additional time to prepare and/or seek counsel
+        
+      % endif
+      % if reason_for_continuance['appointment_or_engagement']:
+        Has a prior doctor appointment/engagement that cannot be rescheduled
+        
+      % endif
+      % if reason_for_continuance['other_reason_for_continuance']:
+        Other: ${ other_reason_for_continuance_description }
+        
+      % endif
 ---
 continue button field: defendants.revisit
 question: |
@@ -431,8 +479,16 @@ attachment:
   skip undefined: True
   docx template file: MotionForContinuance.docx
   fields:
-      - "name": ${ trial_court.name }
+      - "NAME": ${ trial_court.name }
+      - "USER_NAMES": ${ users }
+      - "OTHER_PARTIES_NAMES": ${ other_parties }
       - "judicial_district": ${ trial_court.judicial_district }
       - "district_attorney": ${ trial_court.district_attorney }
+      - "date_of_serving": ${ format_date(when_served, format='short') }
+      - "date_of_ruling_day": ${ format_date(date_rule_to_show_cause_served, format='d') }
+      - "date_of_ruling_month": ${ format_date(date_rule_to_show_cause_served, format='MMMM') }
+      - "date_of_ruling_year": ${ format_date(date_rule_to_show_cause_served, format='yy') }
+      - "time_serving_format": ${ format_time(time_of_serving, format='h:mm a')}
+      
 
 
